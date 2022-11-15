@@ -68,7 +68,7 @@ var
 implementation
 
 uses
-  dea.Tools, uConst, System.StrUtils, dea.cl;
+  dea.Tools, dea.Debug, uConst, System.StrUtils, dea.cl;
 
 {$R *.dfm}
 
@@ -76,34 +76,13 @@ uses
 const
   Base_Url = 'https://buki.com.ua/';
 
-procedure TMainForm.Grid1GetCellParams(Sender: TObject; Column: TColumnEh;
-  AFont: TFont; var Background: TColor; State: TGridDrawState);
-begin
-  if tbOrders.FieldByName('bold').AsBoolean then
-    AFont.Color := clBlack
-  else
-    AFont.Color := clGray;
-
-  if (now - tbOrders.FieldByName('appended').AsDateTime) <= 1 then // добавлено менее 24 ч назад
-    AFont.Style := [fsBold];
-  if tbOrders.FieldByName('comment').AsString = '' then
-    if (Pos('у репетитора', tbOrders.FieldByName('place').AsString) > 0) and
-      (Pos('Одеса', tbOrders.FieldByName('place').AsString) > 0) then
-      Background := $00E1F7FD // желтым
-    else
-      Background := clWhite
-end;
-
-procedure TMainForm.EnableButtons(AEnable: Boolean);
-begin
-  StartButton.Enabled := AEnable;
-end;
-
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
   SimpleLog.RegisterLog('log', WorkingPath + main_log, 2000, 5, [lpTimestamp, lpType]);
   SimpleLog.LockType := ltProcess; // ltMachine, ltNone;
-  Log('start ' + MainForm.Caption + ' - - - - - - - - - - - - - - - - - - - - -');
+  MainForm.Caption := AppName;
+
+  Log('start ' + AppName + ' - - - - - - - - - - - - - - - - - - - - -');
 
   StopButton.Visible := false;
   ProgressBar2.Position := 0;
@@ -129,6 +108,48 @@ procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   ABSDatabase1.CloseDataSets;
   Log('finish');
+end;
+
+procedure TMainForm.Grid1GetCellParams(Sender: TObject; Column: TColumnEh;
+  AFont: TFont; var Background: TColor; State: TGridDrawState);
+begin
+  // if tbOrders.FieldByName('bold').AsBoolean then
+  // AFont.Color := clBlack
+  // else
+  // AFont.Color := clWebLightSkyBlue;
+
+  // if (now - tbOrders.FieldByName('appended').AsDateTime) <= 1 then // добавлено менее 24 ч назад
+  // AFont.Style := [fsBold];
+  if tbOrders.FieldByName('comment').AsString = '' then
+    if (Pos('у репетитора', tbOrders.FieldByName('place').AsString) > 0) and
+      (Pos('Одеса', tbOrders.FieldByName('place').AsString) > 0) then
+      Background := $00E1F7FD // желтым
+    else
+      Background := clWhite
+  else
+    Background := $F5FAFF;
+end;
+
+procedure TMainForm.EnableButtons(AEnable: Boolean);
+begin
+  StartButton.Enabled := AEnable;
+end;
+
+function TMainForm.xGet(url: string): string;
+begin
+  Result := '';
+  ConnectLabel.Visible := false;
+  Status.Update(arrow_down + url);
+  try
+    Result := clDownloadFileToString(Base_Url + url, Base_Url, false);
+    Status.Update('');
+  except
+    on E: Exception do begin
+      ConnectLabel.Caption := E.Message;
+      ConnectLabel.Visible := true;
+      Log(E.Message);
+    end;
+  end;
 end;
 
 procedure TMainForm.StartButtonClick(Sender: TObject);
@@ -157,9 +178,9 @@ end;
 
 procedure TMainForm.Grid1DblClick(Sender: TObject);
 begin
+  // link := 'https://buki.com.ua/zayavka/' + OrderNo; // доступно только при логине
+  OpenUrl(ReplaceStr(tbOrders.FieldByName('link').AsString, '/zayavka/', '/z/')); // без логина
   OpenUrl(tbOrders.FieldByName('link').AsString);
-// link := 'https://buki.com.ua/zayavka/' + OrderNo; // доступно только при логине
-  OpenUrl(ReplaceStr( tbOrders.FieldByName('link').AsString,'/zayavka/','/z/')); // без логина
 end;
 
 procedure TMainForm.IntervalSpinEditChange(Sender: TObject);
@@ -215,12 +236,15 @@ begin
       Grid1.SaveVertPos('orderno');
 
       NewOrder := '-';
-      DoParse('vacancy/matematyka/odesa/', NewOrder);
-      DoParse('vacancy/vyshcha-matematyka/odesa/', NewOrder);
-      if SkypeCheckBox.Checked then begin
-        DoParse('vacancy/prohramuvannia/', NewOrder);
-        DoParse('vacancy/matematyka/', NewOrder);
-      end;
+      // DoParse('vacancy/matematyka/odesa/', NewOrder);
+      DoParse('vacancy/matematyka/', NewOrder);
+      DoParse('vacancy/vyshcha-matematyka/', NewOrder);
+      // if SkypeCheckBox.Checked then begin
+      DoParse('vacancy/prohramuvannia/', NewOrder);
+      DoParse('vacancy/informatyka/', NewOrder);
+
+      // DoParse('vacancy/matematyka/', NewOrder);
+      // end;
 
       Grid1.RestoreVertPos('orderno');
 
@@ -242,38 +266,13 @@ begin
   Grid1.SetFocus;
 end;
 
-function TMainForm.xGet(url: string): string;
-begin
-  Result := '';
-  ConnectLabel.Visible := false;
-  Status.Update(arrow_down + url);
-  try
-    Result := clDownloadFileToString(Base_Url + url, Base_Url, false);
-    Status.Update('');
-  except
-    on E: Exception do begin
-      ConnectLabel.Caption := E.Message;
-      ConnectLabel.Visible := true;
-      Log(E.Message);
-    end;
-  end;
-end;
-
-// <div class="order_wrapper"><div class="title_block"><span>№ 143926</span><span class="rate">150 грн/год</span></div><div class="orders-item"><div class="row"><div class="key"><span>Предмет / Рівень підготовки</span></div><div class="value"><b>Математика / <i>Підготовка до ЗНО</i></b></div></div><div class="row"><div class="key"><span>Місце проведення занять</span></div><div class="value">Одеса, <i>Суворівський, Котовського</i><br>у репетитора</div></div><div class="row"><div class="key"><span>Додаткова інформація</span></div><div class="value">Понедельник, среда. ученик - курсант</div></div><div class="row"><div class="wrapper"><div class="breads_inline"><a class="b_btn btn-warning"
-// href="https://buki.com.ua/nz/">Бажаю взяти заявку</a></div><div class="breads_inline"><a class="b_btn btn-green" href="https://buki.com.ua/z/143926/">Детальніше »</a></div></div></div></div></div>
-// <div class="order_wrapper"><div class="title_block"><span>№ 143812</span><span class="rate">170 грн/год</span></div><div class="orders-item"><div class="row"><div class="key"><span>Предмет / Рівень підготовки</span></div><div class="value"><b>Математика / <i>5 - 6 класи</i></b></div></div><div class="row"><div class="key"><span>Місце проведення занять</span></div><div class="value">Одеса, <i>Приморський, Центр</i><br>у репетитора</div></div><div class="row"><div class="wrapper"><div class="breads_inline"><a class="b_btn btn-warning" href="https://buki.com.ua/nz/">Бажаю взяти заявку</a></div><div class="breads_inline"><a class="b_btn btn-green" href="https://buki.com.ua/z/143812/">Детальніше »</a></div></div></div></div></div>
-// <div class="order_wrapper"><div class="title_block"><span>№ 143727</span><span class="rate">150 грн/год</span></div><div class="orders-item"><div class="row"><div class="key"><span>Предмет / Рівень підготовки</span></div><div class="value"><b>Математика / <i>7 - 9 класи</i></b></div></div><div class="row"><div class="key"><span>Місце проведення занять</span></div><div class="value">Одеса, <i>Суворівський, Котовського</i><br>у репетитора</div></div><div class="row"><div class="key"><span>Додаткова інформація</span></div><div class="value">Пн, ср, пятница----; 8 класс.</div></div><div class="row"><div class="wrapper"><div class="breads_inline"><a class="b_btn btn-warning" href="https://buki.com.ua/nz/">Бажаю взяти заявку</a></div><div class="breads_inline">
-// <a class="b_btn btn-green" href="https://buki.com.ua/z/143727/">Детальніше »</a></div></div></div></div></div><div class="earn">
-// <div class="order_wrapper"><div class="title_block"><span>№ 143668</span><span class="rate">150 грн/год</span></div><div class="orders-item"><div class="row"><div class="key"><span>Предмет / Рівень підготовки</span></div><div class="value"><b>Математика / <i>10-11 класи</i></b></div></div><div class="row"><div class="key"><span>Місце проведення занять</span></div><div class="value">Одеса, <i>Київський, Великий Фонтан, Київський, Середній Фонтан</i><br>у репетитора</div></div><div class="row"><div class="wrapper"><div class="breads_inline"><a class="b_btn btn-warning" href="https://buki.com.ua/nz/">Бажаю взяти заявку</a></div><div class="breads_inline"><a class="b_btn btn-green" href="https://buki.com.ua/z/143668/">Детальніше »</a></div></div></div></div></div>
-// <div class="order_wrapper"><div class="title_block"><span>№ 141984</span><span class="rate">170 грн/год</span></div><div class="orders-item"><div class="row"><div class="key"><span>Предмет / Рівень підготовки</span></div><div class="value"><b>Математика / <i>Підготовка до ЗНО</i></b></div></div><div class="row"><div class="key"><span>Місце проведення занять</span></div><div class="value">Одеса, <i>Малиновський, Молдаванка, Приморський, Центр</i><br>у репетитора</div></div><div class="row"><div class="key"><span>Додаткова інформація</span></div><div class="value">в любой день после 17:00 Підготовка до ЗНО</div></div><div class="row"><div class="wrapper"><div class="breads_inline"><a class="b_btn btn-warning" href="https://buki.com.ua/nz/">Бажаю взяти заявку</a>
-// </div><div class="breads_inline"><a class="b_btn btn-green" href="https://buki.com.ua/z/141984/">Детальніше »</a></div></div></div></div></div></div>
 function TMainForm.DoParse(url: string; var NewOrder: string): Boolean;
 var
   s, item: string;
   I, added: Integer;
-  link, title: string;
+  link: string;
   OrderNo: string;
-  Desc, Price, place, subj: string;
+  Desc, Price, place, subj, times: string;
   // lNew: Boolean; // текущий ордер - новый
   need: Boolean; // нужно записать в базу - по скайпу или в суворовском районе и т.п.
   Suvorov: Boolean; // выделять только Суворовский район
@@ -293,19 +292,26 @@ begin
   tbOrders.DisableControls;
   List := TStringList.Create;
   try
-    ReprepList(s, '<div class="order_wrapper"', '>Детальніше', List); // одно объявление
+    // >онлайн <
+    // ="baseSalary" ...content="200 грн/год"
+
+    ReprepList(s, '<div class="styles_vacancyItem__', '>Детальніше', List); // одно объявление
     ProgressBar2.Max := List.Count;
     for I := 0 to List.Count - 1 do begin
       ProgressBar2.Position := I + 1;
       item := StripText('href=''https://buki.com.ua/nz/''', List[I]);
-      OrderNo := reprep(item, '<span>№ ', '</span');
-      Price := reprep(item, 'class="rate"*itemprop="value" content="', '"');
-      subj := reprep(item, '<span>Предмет*</div>', '</div');
-      // place := reprep(item, '<span>Місце проведення*</div>', '</div');
-      place := reprep(item, 'addressLocality*content=''', '''');
-      Desc := reprep(item, '<span>Допомога потрібна з</span></div>', '</div');
+      OrderNo := reprep(item, '>№ ', '<');
+      Price := reprep(item, '="baseSalary"*"value" content="', '"');
 
-      place := Trim(HTMLStrip(place));
+      subj := reprep(item, '<div itemProp="title">', '</div');
+      times := HTMLStrip(reprep(item, '>Тривалість*">', '</div'));
+
+      // place := reprep(item, '<span>Місце проведення*</div>', '</div');
+      place := reprep(item, '>Локація занять</p>', 'Вартість');
+      Desc := HTMLStrip(reprep(item, '>Допомога потрібна з</div>', '</div')) + ' '
+        + HTMLStrip(reprep(item, '>Додаткова інформація</div><div*>', '</div'));
+
+      place := Trim(HTMLStrip(place)); // онлайн, Київ (у репетитора)
       subj := Trim(HTMLStrip(subj));
       Desc := HTMLStrip(Desc);
 
@@ -316,10 +322,10 @@ begin
         need := false
       else
         if Pos('онлайн', place) > 0 then
-        need := true
-      else
-        need := (Pos('у репетитор', place) > 0) and
-          (not Suvorov or (Pos('Суворівський', place) > 0) or (Pos('Котов', place) > 0));
+          need := true
+        else
+          need := (Pos('у репетитор', place) > 0) {and
+            (not Suvorov or (Pos('Суворівський', place) > 0) or (Pos('Котов', place) > 0))};
       if (Pos('Молодш', subj) > 0) or (Pos('5 - 6 класи', subj) > 0) then // младшие классы 1-4
         need := false;
 
@@ -348,21 +354,22 @@ begin
       tbOrders.FieldByName('place').AsString := place; // у репетитора. Суворівський, Котовського; по скайпу
       tbOrders.FieldByName('subj').AsString := subj;
       tbOrders.FieldByName('bold').AsBoolean := need;
-
+      tbOrders.FieldByName('times').AsString := times;
       tbOrders.Post;
 
-      s := xGet('z/' + OrderNo); // доступно без логина, пример заявки https://i.imgur.com/VbJwmGk.png
+      (* убрали имя заказчика из открытого доступа
+        s := xGet('z/' + OrderNo); // доступно без логина, пример заявки https://i.imgur.com/VbJwmGk.png
 
-      if s = '' then
+        if s = '' then
         Break;
 
-      tbOrders.Edit;
-      // в заголовке после последней запятой имя ученика: Математика, Харків, Владислава
-      title := reprep(s, '<h1>', '</h1');
-      tbOrders.FieldByName('name').AsString := Trim(StrAfterLastPos(',', title));
-      // частота занятий: например 1 год. / 2 на тижд.
-      tbOrders.FieldByName('times').AsString := HTMLStrip(reprep(s, 'Тривалість*</span>', '</span'));
-      tbOrders.Post;
+        tbOrders.Edit;
+        // в заголовке после последней запятой имя ученика: Математика, Харків, Владислава
+        title := reprep(s, '<h1>', '</h1');
+        tbOrders.FieldByName('name').AsString := Trim(StrAfterLastPos(',', title));
+        // частота занятий: например 1 год. / 2 на тижд.
+        tbOrders.FieldByName('times').AsString := HTMLStrip(reprep(s, 'Тривалість*</span>', '</span'));
+        tbOrders.Post; *)
     end;
   finally
     List.Free;
@@ -390,7 +397,3 @@ initialization
 SetDefStorage;
 
 end.
-
-фильр по сумме
-следить за заявкой
-запросы в другом потоке
