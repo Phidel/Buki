@@ -97,7 +97,7 @@ begin
   tbSettings.IndexName := 'xName';
   tbSettings.First;
   tbOrders.Open;
-  tbOrders.IndexName := 'xOrderNo';
+  tbOrders.IndexName := 'xAppended'; // 'xOrderNo';
   tbOrders.First;
 
   TrayIcon1.Hint := MainForm.Caption;
@@ -275,12 +275,12 @@ var
   Desc, Price, place, subj, times: string;
   // lNew: Boolean; // текущий ордер - новый
   need: Boolean; // нужно записать в базу - по скайпу или в суворовском районе и т.п.
-  Suvorov: Boolean; // выдел€ть только —уворовский район
+  //Suvorov: Boolean; // выдел€ть только —уворовский район
   List: TStringList;
   Sum: Integer;
 begin
   Result := false;
-  Suvorov := SuvorovCheckBox.Checked;
+  //Suvorov := SuvorovCheckBox.Checked;
   Sum := SummaEdit.Value;
 
   s := xGet(url); // загружаем страницу с объ€влени€ми (только первую)
@@ -373,6 +373,7 @@ begin
     end;
   finally
     List.Free;
+    tbOrders.IndexName := 'xAppended'; // desc
     tbOrders.EnableControls;
   end;
 end;
