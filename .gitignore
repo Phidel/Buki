@@ -1,0 +1,5 @@
+
+*.exe
+buki.res
+log.txt
+for-client/
