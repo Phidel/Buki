@@ -313,7 +313,7 @@ begin
 
       place := Trim(HTMLStrip(place)); // онлайн, Київ (у репетитора)
       subj := Trim(HTMLStrip(subj));
-      Desc := HTMLStrip(Desc);
+      Desc := ReplaceHTMLChars(HTMLStrip(Desc));
 
       link := 'https://buki.com.ua/zayavka/' + OrderNo; // доступно только при логине
       // https://buki.com.ua/z/348174/ - доступно без логина
